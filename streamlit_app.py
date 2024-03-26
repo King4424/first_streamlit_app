@@ -1,86 +1,71 @@
-import streamlit
-import pandas
-import requests
-import snowflake.connector
-from urllib.error import URLError
-streamlit.title('🥣My Parents New Healthy Diner')
-streamlit.header('🥗Breakfast menu')
-streamlit.text('🐔omega 3 & blueberry Oatmeal')
-streamlit.text('🥑kale, Spinach & rocket smoothie')
-streamlit.text('🍞hard-boiled free-range egg')
-streamlit.header('🍌🥭 Build Your Own Fruit Smoothie 🥝🍇')
- 
-#import pandas
-my_fruit_list = pandas.read_csv("https://uni-lab-files.s3.us-west-2.amazonaws.com/dabw/fruit_macros.txt")
-streamlit.dataframe(my_fruit_list)
-my_fruit_list = my_fruit_list.set_index('Fruit')
- 
-# Let's put a pick list here so they can pick the fruit they want to include 
-fruits_selected = streamlit.multiselect("Pick some fruits:", list(my_fruit_list.index),['Avocado','Strawberries'])
-fruits_to_show = my_fruit_list.loc[fruits_selected]
- 
-# Display the table on the page.
-streamlit.dataframe(fruits_to_show)
- 
+import streamlit as st
+import pandas as pd
+from PIL import Image
 
+# Function to list available folders from the external stage location
+def get_folder_list():
+    # Replace with your Snowflake connection details (ensure secure storage)
+    try:
+        my_cnx = snowflake.connector.connect(**st.secrets["snowflake"])
+        with my_cnx.cursor() as my_cur:
+            my_cur.execute(
+                """
+                SELECT DISTINCT SUBSTRING(file_path, 1, INSTR(file_path, '/')) AS folder_name
+                FROM @MANGO_LEAF_ML_DB.ML_APP_SCHEMA.MANGO_LEAF_ML_DATASET_STAGE
+                """
+            )
+            folders = [row[0] for row in my_cur.fetchall()]
+        return folders
+    except Exception as e:
+        st.error(f"Error fetching folders: {e}")
+        return []
 
+# Function to list image files within a selected folder
+def get_image_list(folder_name):
+    # Replace with your Snowflake connection details (ensure secure storage)
+    try:
+        my_cnx = snowflake.connector.connect(**st.secrets["snowflake"])
+        with my_cnx.cursor() as my_cur:
+            my_cur.execute(
+                """
+                SELECT SUBSTRING(file_path, INSTR(file_path, '/') + 1) AS image_name
+                FROM @MANGO_LEAF_ML_DB.ML_APP_SCHEMA.MANGO_LEAF_ML_DATASET_STAGE
+                WHERE SUBSTRING(file_path, 1, INSTR(file_path, '/')) = ?
+                """,
+                (folder_name,),
+            )
+            images = [row[0] for row in my_cur.fetchall()]
+        return images
+    except Exception as e:
+        st.error(f"Error fetching images: {e}")
+        return []
 
-#create the repeatable code block (called a funcation)
-def get_fruityvice_data(this_fruit_choice):
-   fruityvice_response = requests.get("https://fruityvice.com/api/fruit/" + this_fruit_choice)
-   fruityvice_normalized = pandas.json_normalize(fruityvice_response.json())
-   return fruityvice_normalized   
-#New Section 
-streamlit.header("Fruityvice Fruit Advice!")
-try: 
-   fruit_choice = streamlit.text_input('What fruit would you like information about?')
-   if not fruit_choice:
-     streamlit.error("Please select a fruit to get information.")
-   else:
-     back_from_function = get_fruityvice_data(fruity_choice)
-     streamlit.dataframe(back_from_function)
-#import requests
-     #fruityvice_response = requests.get("https://fruityvice.com/api/fruit/" + fruit_choice)
-     #fruityvice_normalized = pandas.json_normalize(fruityvice_response.json())
-     #streamlit.dataframe(fruityvice_normalized)
-except URLError as e:
-   streamlit.error()
-streamlit.header("The fruit load list contains:")
-#Snowflake-related functions
-def get_fruit_load_list():
-    with my_cnx.cursor() as my_cur:
-         my_cur.execute("select * from fruit_load_list")
-         return my_cur.fetchall()
-        
- 
-# write your own comment -what does the next line do? 
-#fruityvice_normalized = pandas.json_normalize(fruityvice_response.json())
-# write your own comment - what does this do?
-#streamlit.dataframe(fruityvice_normalized)
- 
-# don't run anything past here while we troubleshoot
-#streamlit.stop()
-#import snowflake.connector
-#Add a button to load the fruit
-if streamlit.button('Get Fruit Load List'):
-    #my_cnx = snowflake.connector.connect(**streamlit.secrets["snowflake"])
-#my_cur = my_cnx.cursor()
-#my_cur.execute( "select * from pc_rivery_db.public.fruit_load_list" )
-    my_data_rows = get_fruit_load_list()
-#streamlit.header("The fruit load list contains:")
-    streamlit.dataframe( my_data_rows )
-# Allow the end user to add a fruit to the list
-def insert_row_snowflake(new_fruit):
-    with my_cnx.cursor() as my_cur:
-         my_cur.execute("insert into fruit_load_list values ('from streamlit')")
-         return "Thanks for adding " + new_fruit
-add_my_fruit = streamlit.text_input('What fruit would you like to add?')
-if streamlit.button('Add a Fruit to the List'):
-        my_cnx = snowflake.connector.connect(**streamlit.secrets["snowflake"])
-        back_from_function = insert_row_snowflake(add_my_fruit)
-        streamlit.text(back_from_function)
-streamlit.stop() 
-fruit_choice = streamlit.text_input('What fruit would you like to add?','jackfruit')
-streamlit.write('Thanks for adding ', fruit_choice)
- 
-#my_cur.execute("insert into fruit_load_list values ('from streamlit')")
+st.title('Image Selection App')
+
+# Get available folders from the external stage location
+folder_list = get_folder_list()
+
+if folder_list:
+    selected_folder = st.selectbox('Select Folder', folder_list)
+
+    # Get image list for the selected folder (if any)
+    image_list = get_image_list(selected_folder) if selected_folder else []
+
+    if image_list:
+        selected_image = st.selectbox('Select Image', image_list)
+
+        # Download the selected image (assuming public access for demonstration)
+        image_url = f"https://s3.amazonaws.com/your-bucket-name/{selected_folder}/{selected_image}"  # Replace with your actual URL structure
+        try:
+            response = requests.get(image_url, stream=True)
+            if response.status_code == 200:
+                image = Image.open(response.raw)
+                st.image(image, caption=selected_image, use_column_width=True)
+            else:
+                st.error(f"Failed to download image: {response.status_code}")
+        except Exception as e:
+            st.error(f"Error downloading image: {e}")
+    else:
+        st.info("No images found in this folder.")
+else:
+    st.error("Error fetching folders from Snowflake.")
