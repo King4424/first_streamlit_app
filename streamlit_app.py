@@ -83,4 +83,4 @@ if folder_list:
             else:
                 st.error(f"Failed to download image: {response.status_code}")
         except URLError as e:
-            st.error(f)
+            st.error(f
