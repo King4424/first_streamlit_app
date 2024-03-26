@@ -1,130 +1,86 @@
-import streamlit as st
-from snowflake.snowpark.context import get_active_session
-
-
-# Get the active Snowflake session
-session = get_active_session()
-
-# Execute query to retrieve regions from Snowflake
-query_regions = "SELECT DISTINCT region FROM weather_db.weather_schema.indian_weather"
-regions = session.sql(query_regions).to_pandas()['REGION'].tolist()
-
-# Set page configuration with wide layout and title
-st.set_page_config(
-    layout="wide",
-    page_title="INDIAN WEATHER :cloud: :sunny:"
-)
-
-# Rest of your Streamlit app code goes here
-st.title("INDIAN WEATHER :cloud: :sunny:")  # This title can be removed if redundant
-
-
-# Create dropdown menu to select region
-selected_region = st.selectbox("Select Region", regions)
-
-# Execute query to retrieve location names for the selected region from Snowflake
-query_location_names = f"SELECT DISTINCT location_name FROM weather_db.weather_schema.indian_weather WHERE region = '{selected_region}'"
-location_names = session.sql(query_location_names).to_pandas()['LOCATION_NAME'].tolist()
-
-# Create dropdown menu to select location name within the selected region
-selected_location_name = st.selectbox("Select Location Name", location_names)
-
-# Execute query to retrieve data for the selected region and location_name
-query_selected_data = f"""
-SELECT *
-FROM weather_db.weather_schema.indian_weather
-WHERE region = '{selected_region}' AND location_name = '{selected_location_name}'
-"""
-selected_data = session.sql(query_selected_data).to_pandas()
-
-# Display selected data
-st.write("Selected Data:")
-st.write(selected_data)
-
-
-# Create a dropdown menu to select the parameter to plot
-parameters = ["Temperature (Celsius)", "Temperature (Fahrenheit)", "Humidity", "Condition Text", "Wind Speed (kph)", "Visibility (km)", "Air Quality (Carbon Monoxide)", "Sunrise", "Sunset"]
-selected_parameter = st.selectbox("Select Parameter to Plot", parameters)
-
-# Plot the selected parameter
-if selected_parameter == "Temperature (Celsius)":
-    chart_data = selected_data[['LAST_UPDATED', 'TEMPERATURE_CELSIUS']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Temperature (Celsius)")
-elif selected_parameter == "Temperature (Fahrenheit)":
-    chart_data = selected_data[['LAST_UPDATED', 'TEMPERATURE_FAHRENHEIT']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Temperature (Fahrenheit)")
-elif selected_parameter == "Humidity":
-    chart_data = selected_data[['LAST_UPDATED', 'HUMIDITY']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Humidity")
-elif selected_parameter == "Condition Text":
-    st.bar_chart(data=selected_data['CONDITION_TEXT'].value_counts())
-    st.subheader("Condition Text")
-elif selected_parameter == "Wind Speed (kph)":
-    chart_data = selected_data[['LAST_UPDATED', 'WIND_KPH']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Wind Speed (kph)")
-elif selected_parameter == "Visibility (km)":
-    chart_data = selected_data[['LAST_UPDATED', 'VISIBILITY_KM']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Visibility (km)")
-elif selected_parameter == "Air Quality (Carbon Monoxide)":
-    chart_data = selected_data[['LAST_UPDATED', 'AIR_QUALITY_CARBON_MONOXIDE']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Air Quality (Carbon Monoxide)")
-elif selected_parameter == "Sunrise":
-    chart_data = selected_data[['LAST_UPDATED', 'SUNRISE']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Sunrise")
-elif selected_parameter == "Sunset":
-    chart_data = selected_data[['LAST_UPDATED', 'SUNSET']]
-    st.line_chart(data=chart_data.set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Sunset")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Humidity":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'HUMIDITY']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Humidity Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Temperature (Celsius)":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'TEMPERATURE_CELSIUS']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Temperature (Celsius) Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Wind Speed (kph)":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'WIND_KPH']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("WIND_KPH Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Visibility (km)":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'VISIBILITY_KM']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Visibility (km) Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Air Quality (Carbon Monoxide)":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'AIR_QUALITY_CARBON_MONOXIDE']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Temperature (Celsius) Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Condition Text":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'CONDITION_TEXT']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Condition Text Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Sunrise":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'SUNRISE']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Sunrise Bar Chart")
-
-# Add another type of graph supported by Snowflake and Streamlit
-if selected_parameter == "Sunset":  # Example: Bar chart for Humidity
-    st.bar_chart(data=selected_data[['LAST_UPDATED', 'SUNSET']].set_index('LAST_UPDATED'), use_container_width=True)
-    st.subheader("Sunset Bar Chart")
+import streamlit
+import pandas
+import requests
+import snowflake.connector
+from urllib.error import URLError
+streamlit.title('🥣My Parents New Healthy Diner')
+streamlit.header('🥗Breakfast menu')
+streamlit.text('🐔omega 3 & blueberry Oatmeal')
+streamlit.text('🥑kale, Spinach & rocket smoothie')
+streamlit.text('🍞hard-boiled free-range egg')
+streamlit.header('🍌🥭 Build Your Own Fruit Smoothie 🥝🍇')
+ 
+#import pandas
+my_fruit_list = pandas.read_csv("https://uni-lab-files.s3.us-west-2.amazonaws.com/dabw/fruit_macros.txt")
+streamlit.dataframe(my_fruit_list)
+my_fruit_list = my_fruit_list.set_index('Fruit')
+ 
+# Let's put a pick list here so they can pick the fruit they want to include 
+fruits_selected = streamlit.multiselect("Pick some fruits:", list(my_fruit_list.index),['Avocado','Strawberries'])
+fruits_to_show = my_fruit_list.loc[fruits_selected]
+ 
+# Display the table on the page.
+streamlit.dataframe(fruits_to_show)
+ 
 
 
 
-# Interactive map with wider layout using CSS
-st.subheader("Interactive Map")
-st.map(selected_data)
+#create the repeatable code block (called a funcation)
+def get_fruityvice_data(this_fruit_choice):
+   fruityvice_response = requests.get("https://fruityvice.com/api/fruit/" + this_fruit_choice)
+   fruityvice_normalized = pandas.json_normalize(fruityvice_response.json())
+   return fruityvice_normalized   
+#New Section 
+streamlit.header("Fruityvice Fruit Advice!")
+try: 
+   fruit_choice = streamlit.text_input('What fruit would you like information about?')
+   if not fruit_choice:
+     streamlit.error("Please select a fruit to get information.")
+   else:
+     back_from_function = get_fruityvice_data(fruity_choice)
+     streamlit.dataframe(back_from_function)
+#import requests
+     #fruityvice_response = requests.get("https://fruityvice.com/api/fruit/" + fruit_choice)
+     #fruityvice_normalized = pandas.json_normalize(fruityvice_response.json())
+     #streamlit.dataframe(fruityvice_normalized)
+except URLError as e:
+   streamlit.error()
+streamlit.header("The fruit load list contains:")
+#Snowflake-related functions
+def get_fruit_load_list():
+    with my_cnx.cursor() as my_cur:
+         my_cur.execute("select * from fruit_load_list")
+         return my_cur.fetchall()
+        
+ 
+# write your own comment -what does the next line do? 
+#fruityvice_normalized = pandas.json_normalize(fruityvice_response.json())
+# write your own comment - what does this do?
+#streamlit.dataframe(fruityvice_normalized)
+ 
+# don't run anything past here while we troubleshoot
+#streamlit.stop()
+#import snowflake.connector
+#Add a button to load the fruit
+if streamlit.button('Get Fruit Load List'):
+    #my_cnx = snowflake.connector.connect(**streamlit.secrets["snowflake"])
+#my_cur = my_cnx.cursor()
+#my_cur.execute( "select * from pc_rivery_db.public.fruit_load_list" )
+    my_data_rows = get_fruit_load_list()
+#streamlit.header("The fruit load list contains:")
+    streamlit.dataframe( my_data_rows )
+# Allow the end user to add a fruit to the list
+def insert_row_snowflake(new_fruit):
+    with my_cnx.cursor() as my_cur:
+         my_cur.execute("insert into fruit_load_list values ('from streamlit')")
+         return "Thanks for adding " + new_fruit
+add_my_fruit = streamlit.text_input('What fruit would you like to add?')
+if streamlit.button('Add a Fruit to the List'):
+        my_cnx = snowflake.connector.connect(**streamlit.secrets["snowflake"])
+        back_from_function = insert_row_snowflake(add_my_fruit)
+        streamlit.text(back_from_function)
+streamlit.stop() 
+fruit_choice = streamlit.text_input('What fruit would you like to add?','jackfruit')
+streamlit.write('Thanks for adding ', fruit_choice)
+ 
+#my_cur.execute("insert into fruit_load_list values ('from streamlit')")
