@@ -10,10 +10,13 @@ def get_folder_list():
     try:
         my_cnx = snowflake.connector.connect(**st.secrets["snowflake"])
         with my_cnx.cursor() as my_cur:
+            # Check for case sensitivity. Adjust 'file_path' if necessary.
             my_cur.execute(
                 """
-                SELECT DISTINCT SUBSTRING(file_path, 1, INSTR(file_path, '/')) AS folder_name
-                FROM @MANGO_LEAF_ML_DB.ML_APP_SCHEMA.MANGO_LEAF_ML_DATASET_STAGE
+                SELECT DISTINCT SUBSTRING(CASE WHEN LOWER(column_name) = 'file_path' THEN column_name ELSE NULL END, 1, INSTR(CASE WHEN LOWER(column_name) = 'file_path' THEN column_name ELSE NULL END, '/')) AS folder_name
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE table_schema = 'ML_APP_SCHEMA'
+                AND table_name = 'MANGO_LEAF_ML_DATASET_STAGE'
                 """
             )
             folders = [row[0] for row in my_cur.fetchall()]
@@ -28,16 +31,30 @@ def get_image_list(folder_name):
     try:
         my_cnx = snowflake.connector.connect(**st.secrets["snowflake"])
         with my_cnx.cursor() as my_cur:
+            # Check for case sensitivity. Adjust 'file_path' if necessary.
             my_cur.execute(
                 """
-                SELECT SUBSTRING(file_path, INSTR(file_path, '/') + 1) AS image_name
-                FROM @MANGO_LEAF_ML_DB.ML_APP_SCHEMA.MANGO_LEAF_ML_DATASET_STAGE
-                WHERE SUBSTRING(file_path, 1, INSTR(file_path, '/')) = ?
-                """,
-                (folder_name,),
+                SELECT SUBSTRING(CASE WHEN LOWER(column_name) = 'file_path' THEN column_name ELSE NULL END, INSTR(CASE WHEN LOWER(column_name) = 'file_path' THEN column_name ELSE NULL END, '/') + 1) AS image_name
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE table_schema = 'ML_APP_SCHEMA'
+                AND table_name = 'MANGO_LEAF_ML_DATASET_STAGE'
+                """
             )
-            images = [row[0] for row in my_cur.fetchall()]
-        return images
+            column_name = [row[0] for row in my_cur.fetchall()]  # Get the actual column name
+            if column_name:
+                my_cur.execute(
+                    """
+                    SELECT SUBSTRING(%s, INSTR(%s, '/') + 1) AS image_name
+                    FROM @MANGO_LEAF_ML_DB.ML_APP_SCHEMA.MANGO_LEAF_ML_DATASET_STAGE
+                    WHERE SUBSTRING(%s, 1, INSTR(%s, '/')) = ?
+                    """ % (column_name[0], column_name[0], column_name[0], column_name[0]),
+                    (folder_name,),
+                )
+                images = [row[0] for row in my_cur.fetchall()]
+                return images
+            else:
+                st.error("Column 'FILE_PATH' not found in the table.")
+                return []
     except Exception as e:
         st.error(f"Error fetching images: {e}")
         return []
@@ -66,10 +83,4 @@ if folder_list:
             else:
                 st.error(f"Failed to download image: {response.status_code}")
         except URLError as e:
-            st.error(f"Error downloading image: {e}")
-        except Exception as e:
-            st.error(f"Unexpected error: {e}")
-    else:
-        st.info("No images found in this folder.")
-else:
-    st.error("Error fetching folders from Snowflake.")
+            st.error(f
