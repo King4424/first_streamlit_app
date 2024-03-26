@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image
+import snowflake.connector
+from urllib.error import URLError
 
 # Function to list available folders from the external stage location
 def get_folder_list():
@@ -63,8 +65,10 @@ if folder_list:
                 st.image(image, caption=selected_image, use_column_width=True)
             else:
                 st.error(f"Failed to download image: {response.status_code}")
-        except Exception as e:
+        except URLError as e:
             st.error(f"Error downloading image: {e}")
+        except Exception as e:
+            st.error(f"Unexpected error: {e}")
     else:
         st.info("No images found in this folder.")
 else:
